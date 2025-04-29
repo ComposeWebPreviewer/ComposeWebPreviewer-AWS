@@ -1,0 +1,226 @@
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  ComposerRepositoryName:
+    Description: The repository name to use with your ecr action.
+    Type: String
+  ComposerImageTag:
+    Description: The image tag to use when building and deploying your Docker image.
+    Type: String
+    Default: latest
+
+Resources:
+  # ----- ECS -----
+  ComposerCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: ComposerCluster
+  ComposerTaskDefinitionTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: '2012-10-17'
+  ComposerTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        - Name: ComposerContainer
+          Image: !Join
+            - ''
+            - - !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.
+              - !Ref AWS::URLSuffix
+              - !Sub /${ComposerRepositoryName}:${ComposerImageTag}
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/composer
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+      Cpu: '1024'
+      ExecutionRoleArn: !GetAtt ComposerTaskExecutionRole.Arn
+      Memory: '3072'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        CpuArchitecture: x86_64
+        OperatingSystemFamily: LINUX
+      TaskRoleArn: !GetAtt ComposerTaskDefinitionTaskRole.Arn
+  ComposerTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: '2012-10-17'
+  ComposerTaskExecutionRoleDefaultPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - ecr:BatchCheckLayerAvailability
+              - ecr:BatchGetImage
+              - ecr:GetDownloadUrlForLayer
+            Effect: Allow
+            Resource: !Sub arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ComposerRepositoryName}
+          - Action: ecr:GetAuthorizationToken
+            Effect: Allow
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: '*'
+        Version: '2012-10-17'
+      PolicyName: ComposerTaskExecutionRoleDefaultPolicy
+      Roles:
+        - !Ref ComposerTaskExecutionRole
+  ComposerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/composer
+      RetentionInDays: 14
+  # ^^^^^ ECS ^^^^^
+
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: Api
+      StageName: Prod
+      DefinitionBody:
+        openapi: '3.0'
+        info: {}
+        paths:
+          /:
+            post:
+              responses:
+                '200':
+                  description: default OK response
+              x-amazon-apigateway-integration:
+                credentials: !GetAtt ApiToStateMachineRole.Arn
+                httpMethod: POST
+                type: aws
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartExecution
+                responses:
+                  default:
+                    statusCode: 200
+                requestTemplates:
+                  application/json: !Sub |-
+                    {
+                      "input": "$util.escapeJavaScript($input.json('$'))",
+                      "name": "$context.requestId",
+                      "stateMachineArn": "${StateMachine}"
+                    }
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        MaxAge: 5
+  StateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Definition:
+        StartAt: Run Composer
+        States:
+          Run Composer:
+            Type: Task
+            Resource: arn:aws:states:::ecs:runTask
+            Parameters:
+              LaunchType: FARGATE
+              Overrides:
+                ContainerOverrides:
+                  - Name: ComposerContainer
+                    Command.$: States.Array('/usr/local/bin/app', $.code)
+              Cluster: ${ComposerCluster}
+              TaskDefinition: ${ComposerTaskDefinition}
+              NetworkConfiguration:
+                AwsvpcConfiguration:
+                  AssignPublicIp: ENABLED
+                  Subnets:
+                    - subnet-009a7e8dade2fb429
+                    - subnet-0aab33f871ad44ef1
+                    - subnet-0a84d51ee5579e0e4
+                  SecurityGroups:
+                    - sg-0da1ba2e54e84b3a7
+            End: true
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt StateMachineLogGroup.Arn
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - ecs:RunTask
+              Resource: !Ref ComposerTaskDefinition
+            - Effect: Allow
+              Action:
+                - iam:PassRole
+              Resource: '*'
+      Tracing:
+        Enabled: true
+      Type: EXPRESS
+      DefinitionSubstitutions:
+        ComposerTaskDefinition: !Ref ComposerTaskDefinition
+        ComposerCluster: !Ref ComposerCluster
+      Events:
+        ApiGET:
+          Type: Api
+          Properties:
+            Path: /
+            Method: GET
+            RestApiId: !Ref Api
+        ApiPOST:
+          Type: Api
+          Properties:
+            Path: /
+            Method: POST
+            RestApiId: !Ref Api
+  StateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
+        - ResourceId: StateMachine
+  ApiToStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: !Sub apigateway.${AWS::URLSuffix}
+      Policies:
+        - PolicyName: ExecuteStateMachine
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !GetAtt StateMachine.Arn
