@@ -48,7 +48,7 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
       RuntimePlatform:
-        CpuArchitecture: x86_64
+        CpuArchitecture: ARM64
         OperatingSystemFamily: LINUX
       TaskRoleArn: !GetAtt ComposerTaskDefinitionTaskRole.Arn
   ComposerTaskExecutionRole:
