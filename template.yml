@@ -14,16 +14,6 @@ Resources:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: ComposerCluster
-  ComposerTaskDefinitionTaskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-        Version: '2012-10-17'
   ComposerTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
@@ -41,8 +31,9 @@ Resources:
               awslogs-group: /ecs/composer
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
-      Cpu: '1024'
       ExecutionRoleArn: !GetAtt ComposerTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ComposerTaskExecutionRole.Arn
+      Cpu: '1024'
       Memory: '3072'
       NetworkMode: awsvpc
       RequiresCompatibilities:
@@ -50,7 +41,6 @@ Resources:
       RuntimePlatform:
         CpuArchitecture: ARM64
         OperatingSystemFamily: LINUX
-      TaskRoleArn: !GetAtt ComposerTaskDefinitionTaskRole.Arn
   ComposerTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -61,18 +51,17 @@ Resources:
             Effect: Allow
             Principal:
               Service: ecs-tasks.amazonaws.com
-      Policies:
-        - PolicyName: S3AccessPolicy
+      Policies : 
+        - PolicyName: S3PutObjectPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Effect: Allow
+              - Effect: "Allow"
                 Action:
-                  - s3:PutObject
-                  - s3:GetObject
-                Resource:
-                  - !GetAtt Bucket.Arn
-                  - !Sub "${Bucket.Arn}/*"
+                  - "s3:PutObject"
+                  - "s3:PutObjectTagging"
+                  - "s3:PutObjectAcl"
+                Resource: !Sub "${Bucket.Arn}/*"
   ComposerTaskExecutionRoleDefaultPolicy:
     Type: AWS::IAM::Policy
     Properties:
@@ -156,8 +145,8 @@ Resources:
                     Environment:
                       - Name: S3_BUCKET
                         Value: !Ref Bucket
-              Cluster: ${ComposerCluster}
-              TaskDefinition: ${ComposerTaskDefinition}
+              Cluster: !Ref ComposerCluster
+              TaskDefinition: !Ref ComposerTaskDefinition
               NetworkConfiguration:
                 AwsvpcConfiguration:
                   AssignPublicIp: ENABLED
@@ -199,16 +188,7 @@ Resources:
       Tracing:
         Enabled: true
       Type: EXPRESS
-      DefinitionSubstitutions:
-        ComposerTaskDefinition: !Ref ComposerTaskDefinition
-        ComposerCluster: !Ref ComposerCluster
       Events:
-        ApiGET:
-          Type: Api
-          Properties:
-            Path: /
-            Method: GET
-            RestApiId: !Ref Api
         ApiPOST:
           Type: Api
           Properties:
@@ -241,30 +221,3 @@ Resources:
                 Resource: !GetAtt StateMachine.Arn
   Bucket:
     Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub ${AWS::StackName}-bucket-${AWS::AccountId}
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: aws:kms
-              KMSMasterKeyID: alias/aws/s3
-      PublicAccessBlockConfiguration:
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-  BucketBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref Bucket
-      PolicyDocument:
-        Id: RequireEncryptionInTransit
-        Version: '2012-10-17'
-        Statement:
-          - Principal: '*'
-            Action: '*'
-            Effect: Deny
-            Resource:
-              - !GetAtt Bucket.Arn
-              - !Sub ${Bucket.Arn}/*
-            Condition:
-              Bool:
-                aws:SecureTransport: 'false'
