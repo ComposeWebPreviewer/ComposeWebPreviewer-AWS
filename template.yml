@@ -51,7 +51,7 @@ Resources:
             Effect: Allow
             Principal:
               Service: ecs-tasks.amazonaws.com
-      Policies : 
+      Policies: 
         - PolicyName: S3PutObjectPolicy
           PolicyDocument:
             Version: "2012-10-17"
@@ -62,7 +62,7 @@ Resources:
                   - "s3:PutObjectTagging"
                   - "s3:PutObjectAcl"
                 Resource: !Sub "${Bucket.Arn}/*"
-  ComposerTaskExecutionRoleDefaultPolicy:
+  ComposerTaskExecutionRolePolicy:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -82,7 +82,7 @@ Resources:
               - logs:PutLogEvents
             Resource: '*'
         Version: '2012-10-17'
-      PolicyName: ComposerTaskExecutionRoleDefaultPolicy
+      PolicyName: ComposerTaskExecutionRolePolicy
       Roles:
         - !Ref ComposerTaskExecutionRole
   ComposerLogGroup:
