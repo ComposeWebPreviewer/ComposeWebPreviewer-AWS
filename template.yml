@@ -51,17 +51,17 @@ Resources:
             Effect: Allow
             Principal:
               Service: ecs-tasks.amazonaws.com
-      Policies: 
+      Policies:
         - PolicyName: S3PutObjectPolicy
           PolicyDocument:
-            Version: "2012-10-17"
+            Version: '2012-10-17'
             Statement:
-              - Effect: "Allow"
+              - Effect: Allow
                 Action:
-                  - "s3:PutObject"
-                  - "s3:PutObjectTagging"
-                  - "s3:PutObjectAcl"
-                Resource: !Sub "${Bucket.Arn}/*"
+                  - s3:PutObject
+                  - s3:PutObjectTagging
+                  - s3:PutObjectAcl
+                Resource: !Sub ${Bucket.Arn}/*
   ComposerTaskExecutionRolePolicy:
     Type: AWS::IAM::Policy
     Properties:
@@ -144,9 +144,9 @@ Resources:
                     Command.$: States.Array('/usr/local/bin/app', $.code)
                     Environment:
                       - Name: S3_BUCKET
-                        Value: !Ref Bucket
-              Cluster: !Ref ComposerCluster
-              TaskDefinition: !Ref ComposerTaskDefinition
+                        Value: ${Bucket}
+              Cluster: ${ComposerCluster}
+              TaskDefinition: ${ComposerTaskDefinition}
               NetworkConfiguration:
                 AwsvpcConfiguration:
                   AssignPublicIp: ENABLED
@@ -195,6 +195,10 @@ Resources:
             Path: /
             Method: POST
             RestApiId: !Ref Api
+      DefinitionSubstitutions:
+        Bucket: !Ref Bucket
+        ComposerCluster: !Ref ComposerCluster
+        ComposerTaskDefinition: !Ref ComposerTaskDefinition
   StateMachineLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -238,4 +242,4 @@ Resources:
             Effect: Allow
             Principal: '*'
             Action: s3:GetObject
-            Resource: !Sub '${Bucket.Arn}/*'
+            Resource: !Sub ${Bucket.Arn}/*
