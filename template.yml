@@ -144,7 +144,7 @@ Resources:
                 '200':
                   description: default OK response
               x-amazon-apigateway-integration:
-                credentials: !GetAtt ApiToStateMachineRole.Arn
+                credentials: !GetAtt ApiToCreateComposableRole.Arn
                 httpMethod: POST
                 type: aws
                 uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartExecution
@@ -156,7 +156,7 @@ Resources:
                     {
                       "input": "$util.escapeJavaScript($input.json('$'))",
                       "name": "$context.requestId",
-                      "stateMachineArn": "${StateMachine}"
+                      "stateMachineArn": "${CreateComposable}"
                     }
       EndpointConfiguration: REGIONAL
       TracingEnabled: true
@@ -236,70 +236,16 @@ Resources:
     Properties:
       LogGroupName: !Sub /aws/lambda/${CodespaceDetails}
 
-  StateMachine:
+  CreateComposable:
     Type: AWS::Serverless::StateMachine
     Properties:
-      Definition:
-        StartAt: Are all feilds present?
-        States:
-          Are all feilds present?:
-            Type: Choice
-            Choices:
-              - And:
-                  - Variable: $.code
-                    IsPresent: true
-                  - Variable: $.id
-                    IsPresent: true
-                Next: DynamoDB GetItem
-            Default: Fields are not present
-          DynamoDB GetItem:
-            Type: Task
-            Resource: arn:aws:states:::dynamodb:getItem
-            Parameters:
-              TableName: ${CodespaceDBTableName}
-              Key:
-                id:
-                  S.$: $.id
-            Next: Run Composer
-            Catch:
-              - ErrorEquals:
-                  - States.ALL
-                Next: Id does not exists
-            ResultPath: null
-          Id does not exists:
-            Type: Fail
-          Fields are not present:
-            Type: Fail
-          Run Composer:
-            Type: Task
-            Resource: arn:aws:states:::ecs:runTask
-            Parameters:
-              LaunchType: FARGATE
-              Overrides:
-                ContainerOverrides:
-                  - Name: ComposerContainer
-                    Command.$: States.Array('/usr/local/bin/app', $.id, $.code)
-                    Environment:
-                      - Name: S3_BUCKET
-                        Value: ${Bucket}
-              Cluster: ${ComposerCluster}
-              TaskDefinition: ${ComposerTaskDefinition}
-              NetworkConfiguration:
-                AwsvpcConfiguration:
-                  AssignPublicIp: ENABLED
-                  Subnets:
-                    - subnet-009a7e8dade2fb429
-                    - subnet-0aab33f871ad44ef1
-                    - subnet-0a84d51ee5579e0e4
-                  SecurityGroups:
-                    - sg-0da1ba2e54e84b3a7
-            End: true
+      DefinitionUri: ../step-functions/create-composable.asl.json
       Logging:
         Level: ALL
         IncludeExecutionData: true
         Destinations:
           - CloudWatchLogsLogGroup:
-              LogGroupArn: !GetAtt StateMachineLogGroup.Arn
+              LogGroupArn: !GetAtt CreateComposableLogGroup.Arn
       Policies:
         - AWSXrayWriteOnlyAccess
         - Statement:
@@ -343,13 +289,13 @@ Resources:
         ComposerCluster: !Ref ComposerCluster
         ComposerTaskDefinition: !Ref ComposerTaskDefinition
         CodespaceDBTableName: !Ref CodespaceDB
-  StateMachineLogGroup:
+  CreateComposableLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub
         - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
-        - ResourceId: StateMachine
-  ApiToStateMachineRole:
+        - ResourceId: CreateComposable
+  ApiToCreateComposableRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -366,7 +312,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: states:StartExecution
-                Resource: !GetAtt StateMachine.Arn
+                Resource: !GetAtt CreateComposable.Arn
 
   # ----- Other resources -----
   Bucket:
