@@ -1,0 +1,32 @@
+{
+	"StartAt": "Generate UUID",
+	"States": {
+		"Generate UUID": {
+			"Type": "Pass",
+			"Result": {
+				"uuid.$": "States.UUID()"
+			},
+			"Next": "Create new Codespace"
+		},
+		"Create new Codespace": {
+			"Type": "Task",
+			"Resource": "arn:aws:states:::dynamodb:putItem",
+			"Parameters": {
+				"TableName": "${CodespaceDBTableName}",
+				"Item": {
+					"id": {
+						"S.$": "$.uuid"
+					}
+				}
+			},
+			"Next": "Success"
+		},
+		"Success": {
+			"Type": "Pass",
+			"End": true,
+			"Result": {
+				"status": 200
+			}
+		}
+	}
+}
