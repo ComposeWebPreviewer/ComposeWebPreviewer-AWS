@@ -7,11 +7,11 @@
 				{
 					"And": [
 						{
-							"Variable": "$.code",
+							"Variable": "$.body.code",
 							"IsPresent": true
 						},
 						{
-							"Variable": "$.id",
+							"Variable": "$.body.id",
 							"IsPresent": true
 						}
 					],
@@ -97,7 +97,14 @@
 					}
 				}
 			},
-			"End": true
+			"Next": "Success"
+		},
+		"Success": {
+			"Type": "Pass",
+			"End": true,
+			"Result": {
+				"status": 200
+			}
 		}
 	}
 }
