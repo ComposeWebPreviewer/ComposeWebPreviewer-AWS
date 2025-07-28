@@ -142,7 +142,9 @@ Resources:
             post:
               responses:
                 '200':
-                  description: default OK response
+                  description: OK response
+                '400':
+                  description: Bad Request response
               x-amazon-apigateway-integration:
                 credentials: !GetAtt ApiToCreateComposableRole.Arn
                 httpMethod: POST
@@ -151,10 +153,26 @@ Resources:
                 responses:
                   default:
                     statusCode: 200
+                    responseTemplates:
+                      application/json: |
+                        #set($inputRoot = $input.json('$'))
+                        $util.toJson($inputRoot.body)
+
+                    .*"status":\s*400.*:
+                      statusCode: '400'
+                      responseTemplates:
+                        application/json: |
+                          #set($inputRoot = $input.json('$'))
+                          $util.toJson($inputRoot.body)
+
                 requestTemplates:
                   application/json: !Sub |-
+                    #set($allParams = $input.params())
                     {
-                      "input": "$util.escapeJavaScript($input.json('$'))",
+                      "input": "$util.escapeJavaScript('{\
+                        \"body\": $input.body,\
+                        \"queryParams\": $util.toJson($allParams.querystring)\
+                      }')",
                       "name": "$context.requestId",
                       "stateMachineArn": "${CreateComposable}"
                     }
