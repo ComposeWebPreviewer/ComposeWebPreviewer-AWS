@@ -239,6 +239,7 @@ Resources:
   CreateComposable:
     Type: AWS::Serverless::StateMachine
     Properties:
+      DefinitionUri: state-machine/create-composable.asl.json
       Logging:
         Level: ALL
         IncludeExecutionData: true
@@ -288,7 +289,6 @@ Resources:
         ComposerCluster: !Ref ComposerCluster
         ComposerTaskDefinition: !Ref ComposerTaskDefinition
         CodespaceDBTableName: !Ref CodespaceDB
-      DefinitionUri: state-machine/create-composable.asl.json
   CreateComposableLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
