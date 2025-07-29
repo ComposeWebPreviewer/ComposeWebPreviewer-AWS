@@ -1,0 +1,51 @@
+{
+	"StartAt": "is query id present",
+	"States": {
+		"is query id present": {
+			"Type": "Choice",
+			"Choices": [
+				{
+					"Variable": "$.queryParams.id",
+					"IsPresent": true,
+					"Next": "DynamoDB GetItem"
+				}
+			],
+			"Default": "Id not present"
+		},
+		"DynamoDB GetItem": {
+			"Type": "Task",
+			"Resource": "arn:aws:states:::dynamodb:getItem",
+			"Parameters": {
+				"TableName": "${CodespaceDBTableName}",
+				"Key": {
+					"id": {
+						"S.$": "$.queryParams.id"
+					}
+				}
+			},
+			"Next": "Success"
+		},
+		"Success": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 200,
+				"body": {
+					"id.$": "$.Item.id.S",
+					"wasm.$": "$.Item.wasm.S",
+					"code.$": "$.Item.code.S"
+				}
+			}
+		},
+		"Id not present": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 400,
+				"body": {
+					"error": "id not present"
+				}
+			}
+		}
+	}
+}
