@@ -58,10 +58,6 @@ paths:
       responses:
         200:
           description: OK response
-        400:
-          description: Bad Request response
-        404:
-          description: Not Found response
       x-amazon-apigateway-integration:
         credentials:
           Fn::GetAtt:
@@ -73,14 +69,6 @@ paths:
           Fn::Sub: |-
             arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
         responses:
-          .*error.*400.*:
-            statusCode: 400
-            responseTemplates:
-              application/json: $util.parseJson($input.json('$.output'))
-          .*\\"error\\":\s*\\"404.*:
-            statusCode: 404
-            responseTemplates:
-              application/json: $util.parseJson($input.json('$.output'))
           default:
             statusCode: 200
             responseTemplates:
