@@ -132,7 +132,7 @@ Resources:
                 '200':
                   description: default OK response
               x-amazon-apigateway-integration:
-                credentials: !GetAtt ApiToNewCodespaceRole.Arn
+                credentials: !GetAtt ApiToNewCodespaceStateMachineRole.Arn
                 httpMethod: POST
                 type: aws
                 uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
@@ -146,14 +146,14 @@ Resources:
                   application/json: !Sub |-
                     {
                       "name": "$context.requestId",
-                      "stateMachineArn": "${NewCodespace}"
+                      "stateMachineArn": "${NewCodespaceStateMachine}"
                     }
             get:
               responses:
                 '200':
                   description: default OK response
               x-amazon-apigateway-integration:
-                credentials: !GetAtt ApiToCodespaceDetailsRole.Arn
+                credentials: !GetAtt ApiToCodespaceDetailsStateMachineRole.Arn
                 httpMethod: POST
                 type: aws
                 uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
@@ -169,14 +169,14 @@ Resources:
                     {
                       "input": "{\"body\":$util.escapeJavaScript($input.body),\"queryParams\":{#foreach($param in $params.querystring.keySet())\"$param\":\"$util.escapeJavaScript($params.querystring.get($param))\"#if($foreach.hasNext),#end#end}}",
                       "name": "$context.requestId",
-                      "stateMachineArn": "${CodespaceDetails}"
+                      "stateMachineArn": "${CodespaceDetailsStateMachine}"
                     }
             post:
               responses:
                 '200':
                   description: OK response
               x-amazon-apigateway-integration:
-                credentials: !GetAtt ApiToCreateComposableRole.Arn
+                credentials: !GetAtt ApiToCreateComposableStateMachineRole.Arn
                 httpMethod: POST
                 type: aws
                 uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
@@ -191,14 +191,14 @@ Resources:
                     {
                       "input": "{\"body\":$util.escapeJavaScript($input.body)}",
                       "name": "$context.requestId",
-                      "stateMachineArn": "${CreateComposable}"
+                      "stateMachineArn": "${CreateComposableStateMachine}"
                     }
       EndpointConfiguration: REGIONAL
       TracingEnabled: true
       Cors:
         MaxAge: 5
 
-  NewCodespace:
+  CreateComposableStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
       Logging:
@@ -206,68 +206,7 @@ Resources:
         IncludeExecutionData: true
         Destinations:
           - CloudWatchLogsLogGroup:
-              LogGroupArn: !GetAtt NewCodespaceLogGroup.Arn
-      Policies:
-        - AWSXrayWriteOnlyAccess
-        - Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogDelivery
-                - logs:GetLogDelivery
-                - logs:UpdateLogDelivery
-                - logs:DeleteLogDelivery
-                - logs:ListLogDeliveries
-                - logs:PutResourcePolicy
-                - logs:DescribeResourcePolicies
-                - logs:DescribeLogGroups
-              Resource: '*'
-      Tracing:
-        Enabled: true
-      Type: EXPRESS
-      DefinitionSubstitutions:
-        CodespaceDBTableName: !Ref CodespaceDB
-      Events:
-        ApiPUT:
-          Type: Api
-          Properties:
-            Path: /
-            Method: PUT
-            RestApiId: !Ref Api
-      DefinitionUri: state-machine/new-codespace.asl.json
-  NewCodespaceLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub
-        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
-        - ResourceId: NewCodespace
-  ApiToNewCodespaceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action: sts:AssumeRole
-            Principal:
-              Service: !Sub apigateway.${AWS::URLSuffix}
-      Policies:
-        - PolicyName: ExecuteStateMachine
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: states:StartSyncExecution
-                Resource: !GetAtt NewCodespace.Arn
-
-  CreateComposable:
-    Type: AWS::Serverless::StateMachine
-    Properties:
-      Logging:
-        Level: ALL
-        IncludeExecutionData: true
-        Destinations:
-          - CloudWatchLogsLogGroup:
-              LogGroupArn: !GetAtt CreateComposableLogGroup.Arn
+              LogGroupArn: !GetAtt CreateComposableStateMachineLogGroup.Arn
       Policies:
         - AWSXrayWriteOnlyAccess
         - Statement:
@@ -312,13 +251,13 @@ Resources:
         ComposerTaskDefinition: !Ref ComposerTaskDefinition
         CodespaceDBTableName: !Ref CodespaceDB
       DefinitionUri: state-machine/create-composable.asl.json
-  CreateComposableLogGroup:
+  CreateComposableStateMachineLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub
         - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
-        - ResourceId: CreateComposable
-  ApiToCreateComposableRole:
+        - ResourceId: CreateComposableStateMachine
+  ApiToCreateComposableStateMachineRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -335,7 +274,154 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: states:StartSyncExecution
-                Resource: !GetAtt CreateComposable.Arn
+                Resource: !GetAtt CreateComposableStateMachine.Arn
+
+  NewCodespaceStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt NewCodespaceStateMachineLogGroup.Arn
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: '*'
+      Tracing:
+        Enabled: true
+      Type: EXPRESS
+      DefinitionSubstitutions:
+        CodespaceDBTableName: !Ref CodespaceDB
+      Events:
+        ApiPUT:
+          Type: Api
+          Properties:
+            Path: /
+            Method: PUT
+            RestApiId: !Ref Api
+      DefinitionUri: state-machine/new-codespace.asl.json
+  NewCodespaceStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
+        - ResourceId: NewCodespaceStateMachine
+  ApiToNewCodespaceStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: !Sub apigateway.${AWS::URLSuffix}
+      Policies:
+        - PolicyName: ExecuteStateMachine
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartSyncExecution
+                Resource: !GetAtt NewCodespaceStateMachine.Arn
+
+  CodespaceDetailsStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Definition:
+        StartAt: is query id present
+        States:
+          is query id present:
+            Type: Choice
+            Choices:
+              - Variable: $.queryParams.id
+                IsPresent: true
+                Next: DynamoDB GetItem
+            Default: Pass
+          DynamoDB GetItem:
+            Type: Task
+            Resource: arn:aws:states:::dynamodb:getItem
+            Parameters:
+              TableName: ${CodespaceDBTableName}
+              Key:
+                id:
+                  S.$: $.queryParams.id
+            Next: Pass (1)
+          Pass (1):
+            Type: Pass
+            End: true
+          Pass:
+            Type: Pass
+            End: true
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt CodespaceDetailsStateMachineLogGroup.Arn
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: '*'
+      Tracing:
+        Enabled: true
+      Type: EXPRESS
+      DefinitionSubstitutions:
+        CodespaceDBTableName: !Ref CodespaceDB
+      Events:
+        ApiGET:
+          Type: Api
+          Properties:
+            Path: /
+            Method: GET
+            RestApiId: !Ref Api
+  CodespaceDetailsStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
+        - ResourceId: CodespaceDetailsStateMachine
+  ApiToCodespaceDetailsStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: !Sub apigateway.${AWS::URLSuffix}
+      Policies:
+        - PolicyName: ExecuteStateMachine
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !GetAtt CodespaceDetailsStateMachine.Arn
+  # ^^^^^ API ^^^^^
 
   # ----- Other resources -----
   Bucket:
@@ -370,88 +456,4 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
-  CodespaceDetails:
-    Type: AWS::Serverless::StateMachine
-    Properties:
-      Definition:
-        StartAt: is query id present
-        States:
-          is query id present:
-            Type: Choice
-            Choices:
-              - Variable: $.queryParams.id
-                IsPresent: true
-                Next: DynamoDB GetItem
-            Default: Pass
-          DynamoDB GetItem:
-            Type: Task
-            Resource: arn:aws:states:::dynamodb:getItem
-            Parameters:
-              TableName: ${CodespaceDBTableName}
-              Key:
-                id:
-                  S.$: $.queryParams.id
-            Next: Pass (1)
-          Pass (1):
-            Type: Pass
-            End: true
-          Pass:
-            Type: Pass
-            End: true
-      Logging:
-        Level: ALL
-        IncludeExecutionData: true
-        Destinations:
-          - CloudWatchLogsLogGroup:
-              LogGroupArn: !GetAtt CodespaceDetailsLogGroup.Arn
-      Policies:
-        - AWSXrayWriteOnlyAccess
-        - Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogDelivery
-                - logs:GetLogDelivery
-                - logs:UpdateLogDelivery
-                - logs:DeleteLogDelivery
-                - logs:ListLogDeliveries
-                - logs:PutResourcePolicy
-                - logs:DescribeResourcePolicies
-                - logs:DescribeLogGroups
-              Resource: '*'
-      Tracing:
-        Enabled: true
-      Type: EXPRESS
-      DefinitionSubstitutions:
-        CodespaceDBTableName: !Ref CodespaceDB
-      Events:
-        ApiGET:
-          Type: Api
-          Properties:
-            Path: /
-            Method: GET
-            RestApiId: !Ref Api
-  CodespaceDetailsLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub
-        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
-        - ResourceId: CodespaceDetails
-  ApiToCodespaceDetailsRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action: sts:AssumeRole
-            Principal:
-              Service: !Sub apigateway.${AWS::URLSuffix}
-      Policies:
-        - PolicyName: ExecuteStateMachine
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: states:StartExecution
-                Resource: !GetAtt CodespaceDetails.Arn
   # ^^^^^ Other resources ^^^^^
