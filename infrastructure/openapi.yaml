@@ -1,0 +1,66 @@
+openapi: '3.0'
+info: {}
+paths:
+  /:
+    put:
+      responses:
+        '200':
+          description: default OK response
+      x-amazon-apigateway-integration:
+        credentials: !GetAtt ApiToNewCodespaceStateMachineRole.Arn
+        httpMethod: POST
+        type: aws
+        uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+        responses:
+          default:
+            statusCode: 200
+            responseTemplates:
+              application/json: $util.parseJson($input.json('$.output'))
+        requestTemplates:
+          application/json: !Sub |-
+            {
+              "name": "$context.requestId",
+              "stateMachineArn": "${NewCodespaceStateMachine}"
+            }
+    get:
+      responses:
+        '200':
+          description: default OK response
+      x-amazon-apigateway-integration:
+        credentials: !GetAtt ApiToCodespaceDetailsStateMachineRole.Arn
+        httpMethod: POST
+        type: aws
+        uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+        responses:
+          default:
+            statusCode: 200
+            responseTemplates:
+              application/json: $util.parseJson($input.json('$.output'))
+        requestTemplates:
+          application/json: !Sub |-
+            {
+              "input": "{\"queryParams\":{#foreach($param in $input.params().querystring.keySet())\"$param\":\"$util.escapeJavaScript($input.params().querystring.get($param))\"#if($foreach.hasNext),#end#end}}",
+              "name": "$context.requestId",
+              "stateMachineArn": "${CodespaceDetailsStateMachine}"
+            }
+    post:
+      responses:
+        '200':
+          description: OK response
+      x-amazon-apigateway-integration:
+        credentials: !GetAtt ApiToCreateComposableStateMachineRole.Arn
+        httpMethod: POST
+        type: aws
+        uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+        responses:
+          default:
+            statusCode: 200
+            responseTemplates:
+              application/json: $util.parseJson($input.json('$.output'))
+        requestTemplates:
+          application/json: !Sub |-
+            {
+              "input": "{\"body\":$util.escapeJavaScript($input.body)}",
+              "name": "$context.requestId",
+              "stateMachineArn": "${CreateComposableStateMachine}"
+            }
