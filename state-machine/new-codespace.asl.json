@@ -24,7 +24,7 @@
 		"Success": {
 			"Type": "Pass",
 			"End": true,
-			"Result": {
+			"Parameters": {
 				"status": 200
 			}
 		}

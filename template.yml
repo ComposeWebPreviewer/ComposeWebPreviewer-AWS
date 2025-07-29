@@ -140,8 +140,7 @@ Resources:
                   default:
                     statusCode: 200
                     responseTemplates:
-                      application/json: |
-                        $util.parseJson($input.json('$.output'))
+                      application/json: $util.parseJson($input.json('$.output'))
                 requestTemplates:
                   application/json: !Sub |-
                     {
@@ -161,13 +160,11 @@ Resources:
                   default:
                     statusCode: 200
                     responseTemplates:
-                      application/json: |
-                        $util.parseJson($input.json('$.output'))
+                      application/json: $util.parseJson($input.json('$.output'))
                 requestTemplates:
                   application/json: !Sub |-
-                    $set($params = $input.params())
                     {
-                      "input": "{\"body\":$util.escapeJavaScript($input.body),\"queryParams\":{#foreach($param in $params.querystring.keySet())\"$param\":\"$util.escapeJavaScript($params.querystring.get($param))\"#if($foreach.hasNext),#end#end}}",
+                      "input": "{\"queryParams\":{#foreach($param in $input.params().querystring.keySet())\"$param\":\"$util.escapeJavaScript($input.params().querystring.get($param))\"#if($foreach.hasNext),#end#end}}",
                       "name": "$context.requestId",
                       "stateMachineArn": "${CodespaceDetailsStateMachine}"
                     }
@@ -184,8 +181,7 @@ Resources:
                   default:
                     statusCode: 200
                     responseTemplates:
-                      application/json: |
-                        $util.parseJson($input.json('$.output'))
+                      application/json: $util.parseJson($input.json('$.output'))
                 requestTemplates:
                   application/json: !Sub |-
                     {
@@ -299,6 +295,13 @@ Resources:
                 - logs:DescribeResourcePolicies
                 - logs:DescribeLogGroups
               Resource: '*'
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource:
+                - !GetAtt CodespaceDB.Arn
+                - !Sub ${CodespaceDB.Arn}/index/*
+
       Tracing:
         Enabled: true
       Type: EXPRESS
@@ -340,31 +343,6 @@ Resources:
   CodespaceDetailsStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
-      Definition:
-        StartAt: is query id present
-        States:
-          is query id present:
-            Type: Choice
-            Choices:
-              - Variable: $.queryParams.id
-                IsPresent: true
-                Next: DynamoDB GetItem
-            Default: Pass
-          DynamoDB GetItem:
-            Type: Task
-            Resource: arn:aws:states:::dynamodb:getItem
-            Parameters:
-              TableName: ${CodespaceDBTableName}
-              Key:
-                id:
-                  S.$: $.queryParams.id
-            Next: Pass (1)
-          Pass (1):
-            Type: Pass
-            End: true
-          Pass:
-            Type: Pass
-            End: true
       Logging:
         Level: ALL
         IncludeExecutionData: true
@@ -385,6 +363,12 @@ Resources:
                 - logs:DescribeResourcePolicies
                 - logs:DescribeLogGroups
               Resource: '*'
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource:
+                - !GetAtt CodespaceDB.Arn
+                - !Sub ${CodespaceDB.Arn}/index/*
       Tracing:
         Enabled: true
       Type: EXPRESS
@@ -397,6 +381,7 @@ Resources:
             Path: /
             Method: GET
             RestApiId: !Ref Api
+      DefinitionUri: state-machine/codespace-details.asl.json
   CodespaceDetailsStateMachineLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -419,7 +404,7 @@ Resources:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action: states:StartExecution
+                Action: states:StartSyncExecution
                 Resource: !GetAtt CodespaceDetailsStateMachine.Arn
   # ^^^^^ API ^^^^^
 
