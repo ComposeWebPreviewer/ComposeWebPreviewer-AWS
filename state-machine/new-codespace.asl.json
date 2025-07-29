@@ -3,10 +3,10 @@
 	"States": {
 		"Generate UUID": {
 			"Type": "Pass",
-			"Result": {
+			"Next": "Create new Codespace",
+			"Parameters": {
 				"uuid.$": "States.UUID()"
-			},
-			"Next": "Create new Codespace"
+			}
 		},
 		"Create new Codespace": {
 			"Type": "Task",
