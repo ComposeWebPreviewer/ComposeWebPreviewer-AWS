@@ -22,13 +22,11 @@
 		},
 		"Fields missing": {
 			"Type": "Pass",
-			"Result": {
+			"End": true,
+			"Parameters": {
 				"status": 400,
-				"body": {
-					"error": "fields missing"
-				}
-			},
-			"End": true
+				"error": "fields missing"
+			}
 		},
 		"Get codespace": {
 			"Type": "Task",
@@ -37,7 +35,7 @@
 				"TableName": "${CodespaceDBTableName}",
 				"Key": {
 					"id": {
-						"S.$": "$.id"
+						"S.$": "$.body.id"
 					}
 				}
 			},
@@ -55,11 +53,9 @@
 		"Codespace not found": {
 			"Type": "Pass",
 			"End": true,
-			"Result": {
+			"Parameters": {
 				"status": 400,
-				"body": {
-					"error": "codespace not found"
-				}
+				"error": "codespace not found"
 			}
 		},
 		"Run Composer": {
@@ -102,7 +98,7 @@
 		"Success": {
 			"Type": "Pass",
 			"End": true,
-			"Result": {
+			"Parameters": {
 				"status": 200
 			}
 		}

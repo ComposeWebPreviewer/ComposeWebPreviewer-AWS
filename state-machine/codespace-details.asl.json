@@ -30,11 +30,9 @@
 			"End": true,
 			"Parameters": {
 				"status": 200,
-				"body": {
-					"id.$": "$.Item.id.S",
-					"wasm.$": "$.Item.wasm.S",
-					"code.$": "$.Item.code.S"
-				}
+				"id.$": "$.Item.id.S",
+				"wasm.$": "$.Item.wasm.S",
+				"code.$": "$.Item.code.S"
 			}
 		},
 		"Id not present": {
@@ -42,9 +40,7 @@
 			"End": true,
 			"Parameters": {
 				"status": 400,
-				"body": {
-					"error": "id not present"
-				}
+				"error": "id not present"
 			}
 		}
 	}
