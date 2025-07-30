@@ -312,6 +312,7 @@ Resources:
       Type: EXPRESS
       DefinitionSubstitutions:
         CodespaceDBTableName: !Ref CodespaceDB
+        RunnerJs: !Sub https://${Bucket}.s3.${AWS::Region}.amazonaws.com/composeApp.js
       Events:
         ApiGET:
           Type: Api

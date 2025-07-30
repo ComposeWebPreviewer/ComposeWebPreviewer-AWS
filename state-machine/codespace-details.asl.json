@@ -32,7 +32,8 @@
 				"status": 200,
 				"id.$": "$.Item.id.S",
 				"wasm.$": "$.Item.wasm.S",
-				"code.$": "$.Item.code.S"
+				"code.$": "$.Item.code.S",
+				"js": "${RunnerJs}"
 			}
 		},
 		"Id not present": {

@@ -3,7 +3,7 @@ paths:
   /:
     put:
       responses:
-        200:
+        '200':
           description: default OK response
       x-amazon-apigateway-integration:
         credentials:
@@ -13,8 +13,7 @@ paths:
         httpMethod: POST
         type: aws
         uri:
-          Fn::Sub: |-
-            arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
         responses:
           default:
             statusCode: 200
@@ -29,7 +28,7 @@ paths:
               }
     get:
       responses:
-        200:
+        '200':
           description: default OK response
       x-amazon-apigateway-integration:
         credentials:
@@ -39,8 +38,7 @@ paths:
         httpMethod: POST
         type: aws
         uri:
-          Fn::Sub: |-
-            arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
         responses:
           default:
             statusCode: 200
@@ -56,7 +54,7 @@ paths:
               }
     post:
       responses:
-        200:
+        '200':
           description: OK response
       x-amazon-apigateway-integration:
         credentials:
@@ -66,8 +64,7 @@ paths:
         httpMethod: POST
         type: aws
         uri:
-          Fn::Sub: |-
-            arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
         responses:
           default:
             statusCode: 200
@@ -81,4 +78,3 @@ paths:
                 "name": "$context.requestId",
                 "stateMachineArn": "${CreateComposableStateMachine}"
               }
-
