@@ -130,7 +130,7 @@ Resources:
       EndpointConfiguration: REGIONAL
       TracingEnabled: true
       Cors:
-        MaxAge: 5
+        MaxAge: 3600
 
   OptionsMethod:
     Type: AWS::ApiGateway::Method
