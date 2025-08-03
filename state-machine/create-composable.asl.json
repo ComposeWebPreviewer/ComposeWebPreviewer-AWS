@@ -67,7 +67,7 @@
 					"ContainerOverrides": [
 						{
 							"Name": "ComposerContainer",
-							"Command.$": "States.Array('/usr/local/bin/app', $.id, $.code)",
+							"Command.$": "States.Array('/usr/local/bin/app', $.body.id, $.body.code)",
 							"Environment": [
 								{
 									"Name": "S3_BUCKET",

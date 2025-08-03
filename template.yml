@@ -110,8 +110,9 @@ Resources:
   ComposerLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: /ecs/composer
-      RetentionInDays: 14
+      LogGroupName: !Sub
+        - /aws/vendedlogs/ecs/${AWS::StackName}-${ResourceId}-Logs
+        - ResourceId: ComposerCluster
   # ^^^^^ ECS ^^^^^
 
   # ----- API -----
@@ -374,6 +375,17 @@ Resources:
   Bucket:
     Type: AWS::S3::Bucket
     Properties:
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+            AllowedOrigins:
+              - '*'
+            ExposedHeaders:
+              - Date
+            MaxAge: 3600
       PublicAccessBlockConfiguration:
         BlockPublicAcls: false
         IgnorePublicAcls: false
