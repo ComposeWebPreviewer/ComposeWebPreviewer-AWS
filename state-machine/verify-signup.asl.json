@@ -1,0 +1,43 @@
+{
+	"StartAt": "Choice",
+	"States": {
+		"Choice": {
+			"Type": "Choice",
+			"Choices": [
+				{
+					"And": [
+						{
+							"Variable": "$.body.session",
+							"IsPresent": true
+						},
+						{
+							"Variable": "$.body.username",
+							"IsPresent": true
+						},
+						{
+							"Variable": "$.body.code",
+							"IsPresent": true
+						}
+					],
+					"Next": "ConfirmSignUp"
+				}
+			],
+			"Default": "Pass"
+		},
+		"Pass": {
+			"Type": "Pass",
+			"End": true
+		},
+		"ConfirmSignUp": {
+			"Type": "Task",
+			"Parameters": {
+				"ClientId": "${UserPoolClientId}",
+				"ConfirmationCode": "$.body.code",
+				"Username": "$.body.username",
+				"Session": "$.body.session"
+			},
+			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:confirmSignUp",
+			"End": true
+		}
+	}
+}

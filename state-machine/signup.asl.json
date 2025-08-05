@@ -1,0 +1,48 @@
+{
+	"StartAt": "All fields present?",
+	"States": {
+		"All fields present?": {
+			"Type": "Choice",
+			"Choices": [
+				{
+					"And": [
+						{
+							"Variable": "$.body.username",
+							"IsPresent": true
+						},
+						{
+							"Variable": "$.body.email",
+							"IsPresent": true
+						},
+						{
+							"Variable": "$.body.password",
+							"IsPresent": true
+						}
+					],
+					"Next": "SignUp"
+				}
+			],
+			"Default": "Pass"
+		},
+		"Pass": {
+			"Type": "Pass",
+			"End": true
+		},
+		"SignUp": {
+			"Type": "Task",
+			"Parameters": {
+				"ClientId": "${UserPoolClientId}",
+				"Password.$": "$.body.password",
+				"Username.$": "$.body.username",
+				"UserAttributes": [
+					{
+						"Name": "email",
+						"Value.$": "$.body.email"
+					}
+				]
+			},
+			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:signUp",
+			"End": true
+		}
+	}
+}

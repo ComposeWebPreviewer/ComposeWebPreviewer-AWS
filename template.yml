@@ -156,6 +156,258 @@ Resources:
             method.response.header.Access-Control-Allow-Methods: false
             method.response.header.Access-Control-Allow-Origin: false
 
+  LoginStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Definition:
+        StartAt: LambdaTask
+        States:
+          LambdaTask:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              Payload.$: $
+              FunctionName: ''
+            End: true
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt LoginStateMachineLogGroup.Arn
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: '*'
+      Tracing:
+        Enabled: true
+      Type: EXPRESS
+      DefinitionSubstitutions: {}
+      Events:
+        ApiPOSTlogin:
+          Type: Api
+          Properties:
+            Path: /login
+            Method: POST
+            RestApiId: !Ref Api
+  LoginStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
+        - ResourceId: LoginStateMachine
+  ApiToLoginStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: !Sub apigateway.${AWS::URLSuffix}
+      Policies:
+        - PolicyName: ExecuteStateMachine
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !GetAtt LoginStateMachine.Arn
+
+  SignupStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt SignupStateMachineLogGroup.Arn
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: '*'
+      Tracing:
+        Enabled: true
+      Type: EXPRESS
+      DefinitionSubstitutions:
+        UserPoolClientId: !Ref UserPoolClient
+      Events:
+        ApiPOSTsingup:
+          Type: Api
+          Properties:
+            Path: /singup
+            Method: POST
+            RestApiId: !Ref Api
+      DefinitionUri: state-machine/signup.asl.json
+  SignupStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
+        - ResourceId: SignupStateMachine
+  ApiToSignupStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: !Sub apigateway.${AWS::URLSuffix}
+      Policies:
+        - PolicyName: ExecuteStateMachine
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartSyncExecution
+                Resource: !GetAtt SignupStateMachine.Arn
+
+  ResendOtpStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt ResendOtpStateMachineLogGroup.Arn
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: '*'
+      Tracing:
+        Enabled: true
+      Type: EXPRESS
+      DefinitionSubstitutions:
+        UserPoolClientId: !Ref UserPoolClient
+      Events:
+        ApiPOSTauthsignupresend:
+          Type: Api
+          Properties:
+            Path: /auth/signup/resend
+            Method: POST
+            RestApiId: !Ref Api
+      DefinitionUri: state-machine/resend-otp.asl.json
+  ResendOtpStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
+        - ResourceId: ResendOtpStateMachine
+  ApiToResendOtpStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: !Sub apigateway.${AWS::URLSuffix}
+      Policies:
+        - PolicyName: ExecuteStateMachine
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartSyncExecution
+                Resource: !GetAtt ResendOtpStateMachine.Arn
+
+  VerifyStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt VerifyStateMachineLogGroup.Arn
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: '*'
+      Tracing:
+        Enabled: true
+      Type: EXPRESS
+      DefinitionSubstitutions:
+        UserPoolClientId: !Ref UserPoolClient
+      Events:
+        ApiPOSTauthsignupverify:
+          Type: Api
+          Properties:
+            Path: /auth/signup/verify
+            Method: POST
+            RestApiId: !Ref Api
+      DefinitionUri: state-machine/verify-signup.asl.json
+  VerifyStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
+        - ResourceId: VerifyStateMachine
+  ApiToVerifyStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: !Sub apigateway.${AWS::URLSuffix}
+      Policies:
+        - PolicyName: ExecuteStateMachine
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: states:StartSyncExecution
+                Resource: !GetAtt VerifyStateMachine.Arn
+
   CreateComposableStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
@@ -415,4 +667,22 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      AliasAttributes:
+        - email
+        - preferred_username
+      AutoVerifiedAttributes:
+        - email
+      UserPoolName: !Sub ${AWS::StackName}-UserPool
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ExplicitAuthFlows:
+        - ALLOW_USER_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
   # ^^^^^ Other resources ^^^^^
