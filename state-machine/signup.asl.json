@@ -19,14 +19,69 @@
 							"IsPresent": true
 						}
 					],
-					"Next": "SignUp"
+					"Next": "List users with same email id"
 				}
 			],
-			"Default": "Pass"
+			"Default": "Fields are not present"
 		},
-		"Pass": {
+		"List users with same email id": {
+			"Type": "Task",
+			"Parameters": {
+				"UserPoolId": "${UserPoolId}",
+				"AttributesToGet": [
+					"email_verified"
+				],
+				"Filter.$": "States.Format('email = \"{}\"', $.body.email)"
+			},
+			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:listUsers",
+			"Next": "Delete unverified users",
+			"ResultPath": "$.search"
+		},
+		"Delete unverified users": {
+			"Type": "Map",
+			"ItemProcessor": {
+				"ProcessorConfig": {
+					"Mode": "INLINE"
+				},
+				"StartAt": "Is the user verified",
+				"States": {
+					"Is the user verified": {
+						"Type": "Choice",
+						"Choices": [
+							{
+								"Variable": "$.Attributes[0].Value",
+								"StringEquals": "false",
+								"Next": "AdminDeleteUser"
+							}
+						],
+						"Default": "Skip"
+					},
+					"Skip": {
+						"Type": "Pass",
+						"End": true
+					},
+					"AdminDeleteUser": {
+						"Type": "Task",
+						"Parameters": {
+							"UserPoolId": "${UserPoolId}",
+							"Username.$": "$.Username"
+						},
+						"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:adminDeleteUser",
+						"End": true,
+						"ResultPath": null
+					}
+				}
+			},
+			"Next": "SignUp",
+			"ItemsPath": "$.search.Users",
+			"ResultPath": null
+		},
+		"Fields are not present": {
 			"Type": "Pass",
-			"End": true
+			"End": true,
+			"Parameters": {
+				"status": 400
+			}
 		},
 		"SignUp": {
 			"Type": "Task",
@@ -42,7 +97,48 @@
 				]
 			},
 			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:signUp",
-			"End": true
+			"Catch": [
+				{
+					"ErrorEquals": [
+						"CognitoIdentityProvider.InvalidPasswordException"
+					],
+					"Next": "Invalid password",
+					"Comment": "Catch invalid password",
+					"ResultPath": null
+				},
+				{
+					"ErrorEquals": [
+						"CognitoIdentityProvider.UsernameExistsException"
+					],
+					"Comment": "Catch username exists",
+					"ResultPath": null,
+					"Next": "Conflict exists"
+				}
+			],
+			"Next": "Signup successful"
+		},
+		"Signup successful": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 200,
+				"session.$": "$.Session",
+				"sub.$": "$.UserSub"
+			}
+		},
+		"Conflict exists": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 409
+			}
+		},
+		"Invalid password": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 406
+			}
 		}
 	}
 }

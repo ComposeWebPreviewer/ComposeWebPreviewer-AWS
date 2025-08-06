@@ -1,0 +1,162 @@
+{
+	"StartAt": "Choose appropriate auth flow",
+	"States": {
+		"Choose appropriate auth flow": {
+			"Type": "Choice",
+			"Choices": [
+				{
+					"And": [
+						{
+							"Variable": "$.body.session",
+							"IsPresent": true
+						},
+						{
+							"Variable": "$.body.username",
+							"IsPresent": true
+						}
+					],
+					"Next": "Login with Signup Session id"
+				},
+				{
+					"And": [
+						{
+							"Variable": "$.body.username",
+							"IsPresent": true
+						},
+						{
+							"Variable": "$.body.password",
+							"IsPresent": true
+						}
+					],
+					"Next": "Login with Username and Password"
+				},
+				{
+					"Variable": "$.body.refresh_token",
+					"IsPresent": true,
+					"Next": "Refresh token"
+				}
+			],
+			"Default": "Not enough fields present"
+		},
+		"Not enough fields present": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 400,
+				"error": "Not enough fields present"
+			}
+		},
+		"Login with Signup Session id": {
+			"Type": "Task",
+			"Parameters": {
+				"ClientId": "${UserPoolClientId}",
+				"AuthFlow": "USER_AUTH",
+				"AuthParameters": {
+					"USERNAME.$": "$.body.username"
+				},
+				"Session.$": "$.body.session"
+			},
+			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:initiateAuth",
+			"Next": "Successful",
+			"Catch": [
+				{
+					"ErrorEquals": [
+						"CognitoIdentityProvider.UserNotConfirmedException"
+					],
+					"Comment": "User not confirmed",
+					"Next": "User not confirmed"
+				},
+				{
+					"ErrorEquals": [
+						"CognitoIdentityProvider.UserNotFoundException"
+					],
+					"Comment": "User not found",
+					"Next": "User not found"
+				}
+			]
+		},
+		"User not found": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 404
+			}
+		},
+		"User not confirmed": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 403
+			}
+		},
+		"Successful": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 200,
+				"access_token.$": "$.AuthenticationResult.AccessToken",
+				"refresh_token.$": "$.AuthenticationResult.RefreshToken",
+				"token_type.$": "$.AuthenticationResult.TokenType",
+				"id_token.$": "$.AuthenticationResult.IdToken",
+				"expires_in.$": "$.AuthenticationResult.ExpiresIn"
+			}
+		},
+		"Login with Username and Password": {
+			"Type": "Task",
+			"Parameters": {
+				"ClientId": "${UserPoolClientId}",
+				"AuthFlow": "USER_PASSWORD_AUTH",
+				"AuthParameters": {
+					"USERNAME.$": "$.body.username",
+					"PASSWORD.$": "$.body.password"
+				}
+			},
+			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:initiateAuth",
+			"Next": "Successful",
+			"Catch": [
+				{
+					"ErrorEquals": [
+						"CognitoIdentityProvider.UserNotConfirmedException"
+					],
+					"Next": "User not confirmed",
+					"Comment": "User not confirmed"
+				},
+				{
+					"ErrorEquals": [
+						"CognitoIdentityProvider.UserNotFoundException"
+					],
+					"Comment": "User not found",
+					"Next": "User not found"
+				}
+			]
+		},
+		"Refresh token": {
+			"Type": "Task",
+			"Parameters": {
+				"ClientId": "${UserPoolClientId}",
+				"AuthFlow": "REFRESH_TOKEN",
+				"AuthParameters": {
+					"REFRESH_TOKEN.$": "$.body.refreshToken"
+				}
+			},
+			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:initiateAuth",
+			"Next": "Successful",
+			"Catch": [
+				{
+					"ErrorEquals": [
+						"CognitoIdentityProvider.NotAuthorizedException"
+					],
+					"Next": "Refresh token expired",
+					"Comment": "Refresh token expired"
+				}
+			]
+		},
+		"Refresh token expired": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 401
+			}
+		}
+	}
+}

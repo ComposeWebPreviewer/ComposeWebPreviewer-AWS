@@ -159,16 +159,6 @@ Resources:
   LoginStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
-      Definition:
-        StartAt: LambdaTask
-        States:
-          LambdaTask:
-            Type: Task
-            Resource: arn:aws:states:::lambda:invoke
-            Parameters:
-              Payload.$: $
-              FunctionName: ''
-            End: true
       Logging:
         Level: ALL
         IncludeExecutionData: true
@@ -192,7 +182,8 @@ Resources:
       Tracing:
         Enabled: true
       Type: EXPRESS
-      DefinitionSubstitutions: {}
+      DefinitionSubstitutions:
+        UserPoolClientId: !Ref UserPoolClient
       Events:
         ApiPOSTlogin:
           Type: Api
@@ -200,6 +191,7 @@ Resources:
             Path: /login
             Method: POST
             RestApiId: !Ref Api
+      DefinitionUri: state-machine/login.asl.json
   LoginStateMachineLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -222,7 +214,7 @@ Resources:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action: states:StartExecution
+                Action: states:StartSyncExecution
                 Resource: !GetAtt LoginStateMachine.Arn
 
   SignupStateMachine:
@@ -248,11 +240,17 @@ Resources:
                 - logs:DescribeResourcePolicies
                 - logs:DescribeLogGroups
               Resource: '*'
+            - Effect: Allow
+              Action:
+                - cognito-idp:ListUsers
+                - cognito-idp:AdminDeleteUser
+              Resource: !GetAtt UserPool.Arn
       Tracing:
         Enabled: true
       Type: EXPRESS
       DefinitionSubstitutions:
         UserPoolClientId: !Ref UserPoolClient
+        UserPoolId: !Ref UserPool
       Events:
         ApiPOSTsingup:
           Type: Api
@@ -285,128 +283,6 @@ Resources:
               - Effect: Allow
                 Action: states:StartSyncExecution
                 Resource: !GetAtt SignupStateMachine.Arn
-
-  ResendOtpStateMachine:
-    Type: AWS::Serverless::StateMachine
-    Properties:
-      Logging:
-        Level: ALL
-        IncludeExecutionData: true
-        Destinations:
-          - CloudWatchLogsLogGroup:
-              LogGroupArn: !GetAtt ResendOtpStateMachineLogGroup.Arn
-      Policies:
-        - AWSXrayWriteOnlyAccess
-        - Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogDelivery
-                - logs:GetLogDelivery
-                - logs:UpdateLogDelivery
-                - logs:DeleteLogDelivery
-                - logs:ListLogDeliveries
-                - logs:PutResourcePolicy
-                - logs:DescribeResourcePolicies
-                - logs:DescribeLogGroups
-              Resource: '*'
-      Tracing:
-        Enabled: true
-      Type: EXPRESS
-      DefinitionSubstitutions:
-        UserPoolClientId: !Ref UserPoolClient
-      Events:
-        ApiPOSTauthsignupresend:
-          Type: Api
-          Properties:
-            Path: /auth/signup/resend
-            Method: POST
-            RestApiId: !Ref Api
-      DefinitionUri: state-machine/resend-otp.asl.json
-  ResendOtpStateMachineLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub
-        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
-        - ResourceId: ResendOtpStateMachine
-  ApiToResendOtpStateMachineRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action: sts:AssumeRole
-            Principal:
-              Service: !Sub apigateway.${AWS::URLSuffix}
-      Policies:
-        - PolicyName: ExecuteStateMachine
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: states:StartSyncExecution
-                Resource: !GetAtt ResendOtpStateMachine.Arn
-
-  VerifyStateMachine:
-    Type: AWS::Serverless::StateMachine
-    Properties:
-      Logging:
-        Level: ALL
-        IncludeExecutionData: true
-        Destinations:
-          - CloudWatchLogsLogGroup:
-              LogGroupArn: !GetAtt VerifyStateMachineLogGroup.Arn
-      Policies:
-        - AWSXrayWriteOnlyAccess
-        - Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogDelivery
-                - logs:GetLogDelivery
-                - logs:UpdateLogDelivery
-                - logs:DeleteLogDelivery
-                - logs:ListLogDeliveries
-                - logs:PutResourcePolicy
-                - logs:DescribeResourcePolicies
-                - logs:DescribeLogGroups
-              Resource: '*'
-      Tracing:
-        Enabled: true
-      Type: EXPRESS
-      DefinitionSubstitutions:
-        UserPoolClientId: !Ref UserPoolClient
-      Events:
-        ApiPOSTauthsignupverify:
-          Type: Api
-          Properties:
-            Path: /auth/signup/verify
-            Method: POST
-            RestApiId: !Ref Api
-      DefinitionUri: state-machine/verify-signup.asl.json
-  VerifyStateMachineLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub
-        - /aws/vendedlogs/states/${AWS::StackName}-${ResourceId}-Logs
-        - ResourceId: VerifyStateMachine
-  ApiToVerifyStateMachineRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action: sts:AssumeRole
-            Principal:
-              Service: !Sub apigateway.${AWS::URLSuffix}
-      Policies:
-        - PolicyName: ExecuteStateMachine
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: states:StartSyncExecution
-                Resource: !GetAtt VerifyStateMachine.Arn
 
   CreateComposableStateMachine:
     Type: AWS::Serverless::StateMachine
@@ -515,7 +391,6 @@ Resources:
               Resource:
                 - !GetAtt CodespaceDB.Arn
                 - !Sub ${CodespaceDB.Arn}/index/*
-
       Tracing:
         Enabled: true
       Type: EXPRESS
@@ -677,6 +552,9 @@ Resources:
         - preferred_username
       AutoVerifiedAttributes:
         - email
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_LINK
+        EmailSubjectByLink: Your verification link from ComposeWeb
       UserPoolName: !Sub ${AWS::StackName}-UserPool
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -685,4 +563,16 @@ Resources:
       ExplicitAuthFlows:
         - ALLOW_USER_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: composeweb-auth
   # ^^^^^ Other resources ^^^^^
+Metadata:
+  AWS::Composer::Groups:
+    Group:
+      Label: AuthGroup
+      Members:
+        - LoginStateMachine
+        - SignupStateMachine

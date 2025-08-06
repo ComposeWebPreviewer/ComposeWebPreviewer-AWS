@@ -13,19 +13,21 @@ paths:
         httpMethod: POST
         type: aws
         uri:
-          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartExecution
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
         responses:
           default:
             statusCode: 200
+            responseTemplates:
+              application/json: $util.parseJson($input.json('$.output'))
         requestTemplates:
           application/json:
             Fn::Sub: |-
               {
-                "input": "$util.escapeJavaScript($input.json('$'))",
+                "input": "{\"body\":$util.escapeJavaScript($input.body)}",
                 "name": "$context.requestId",
                 "stateMachineArn": "${LoginStateMachine}"
               }
-  /auth/singup:
+  /auth/signup:
     post:
       responses:
         '200':
@@ -42,6 +44,8 @@ paths:
         responses:
           default:
             statusCode: 200
+            responseTemplates:
+              application/json: $util.parseJson($input.json('$.output'))
         requestTemplates:
           application/json:
             Fn::Sub: |-
@@ -49,56 +53,6 @@ paths:
                 "input": "{\"body\":$util.escapeJavaScript($input.body)}",
                 "name": "$context.requestId",
                 "stateMachineArn": "${SignupStateMachine}"
-              }
-  /auth/signup/resend:
-    post:
-      responses:
-        '200':
-          description: default OK response
-      x-amazon-apigateway-integration:
-        credentials:
-          Fn::GetAtt:
-            - ApiToResendOtpStateMachineRole
-            - Arn
-        httpMethod: POST
-        type: aws
-        uri:
-          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
-        responses:
-          default:
-            statusCode: 200
-        requestTemplates:
-          application/json:
-            Fn::Sub: |-
-              {
-                "input": "{\"body\":$util.escapeJavaScript($input.body)}",
-                "name": "$context.requestId",
-                "stateMachineArn": "${ResendOtpStateMachine}"
-              }
-  /auth/signup/verify:
-    post:
-      responses:
-        '200':
-          description: default OK response
-      x-amazon-apigateway-integration:
-        credentials:
-          Fn::GetAtt:
-            - ApiToVerifyStateMachineRole
-            - Arn
-        httpMethod: POST
-        type: aws
-        uri:
-          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
-        responses:
-          default:
-            statusCode: 200
-        requestTemplates:
-          application/json:
-            Fn::Sub: |-
-              {
-                "input": "{\"body\":$util.escapeJavaScript($input.body)}",
-                "name": "$context.requestId",
-                "stateMachineArn": "${VerifyStateMachine}"
               }
   /:
     put:
