@@ -1,5 +1,59 @@
 openapi: 3.0.1
 paths:
+  /auth/login:
+    post:
+      responses:
+        '200':
+          description: default OK response
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::GetAtt:
+            - ApiToLoginStateMachineRole
+            - Arn
+        httpMethod: POST
+        type: aws
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+        responses:
+          default:
+            statusCode: 200
+            responseTemplates:
+              application/json: $util.parseJson($input.json('$.output'))
+        requestTemplates:
+          application/json:
+            Fn::Sub: |-
+              {
+                "input": "{\"body\":$util.escapeJavaScript($input.body)}",
+                "name": "$context.requestId",
+                "stateMachineArn": "${LoginStateMachine}"
+              }
+  /auth/signup:
+    post:
+      responses:
+        '200':
+          description: default OK response
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::GetAtt:
+            - ApiToSignupStateMachineRole
+            - Arn
+        httpMethod: POST
+        type: aws
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+        responses:
+          default:
+            statusCode: 200
+            responseTemplates:
+              application/json: $util.parseJson($input.json('$.output'))
+        requestTemplates:
+          application/json:
+            Fn::Sub: |-
+              {
+                "input": "{\"body\":$util.escapeJavaScript($input.body)}",
+                "name": "$context.requestId",
+                "stateMachineArn": "${SignupStateMachine}"
+              }
   /:
     put:
       responses:
