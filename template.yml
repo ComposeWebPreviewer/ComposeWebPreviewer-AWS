@@ -110,9 +110,7 @@ Resources:
   ComposerLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub
-        - /aws/vendedlogs/ecs/${AWS::StackName}-${ResourceId}-Logs
-        - ResourceId: ComposerCluster
+      LogGroupName: /ecs/composer
   # ^^^^^ ECS ^^^^^
 
   # ----- API -----
