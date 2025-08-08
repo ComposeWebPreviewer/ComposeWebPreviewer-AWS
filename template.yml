@@ -13,6 +13,9 @@ Resources:
   ComposerCluster:
     Type: AWS::ECS::Cluster
     Properties:
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
       ClusterName: ComposerCluster
   ComposerTaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -38,8 +41,8 @@ Resources:
               Value: !GetAtt CodespaceDB.Arn
       ExecutionRoleArn: !GetAtt ComposerTaskExecutionRole.Arn
       TaskRoleArn: !GetAtt ComposerTaskExecutionRole.Arn
-      Cpu: '1024'
-      Memory: '3072'
+      Cpu: '2048'
+      Memory: '4096'
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
