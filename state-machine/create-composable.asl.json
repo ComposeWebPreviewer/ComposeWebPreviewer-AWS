@@ -62,7 +62,6 @@
 			"Type": "Task",
 			"Resource": "arn:aws:states:::ecs:runTask",
 			"Parameters": {
-				"LaunchType": "FARGATE",
 				"Overrides": {
 					"ContainerOverrides": [
 						{
@@ -79,6 +78,12 @@
 				},
 				"Cluster": "${ComposerCluster}",
 				"TaskDefinition": "${ComposerTaskDefinition}",
+				"CapacityProviderStrategy": [
+					{
+						"CapacityProvider": "FARGATE_SPOT",
+						"Weight": 1
+					}
+				],
 				"NetworkConfiguration": {
 					"AwsvpcConfiguration": {
 						"AssignPublicIp": "ENABLED",
