@@ -41,8 +41,8 @@ Resources:
               Value: !GetAtt CodespaceDB.Arn
       ExecutionRoleArn: !GetAtt ComposerTaskExecutionRole.Arn
       TaskRoleArn: !GetAtt ComposerTaskExecutionRole.Arn
-      Cpu: '2048'
-      Memory: '4096'
+      Cpu: '8192'
+      Memory: '16384'
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
