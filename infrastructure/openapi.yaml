@@ -59,9 +59,6 @@ paths:
       responses:
         '200':
           description: default OK response
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
       x-amazon-apigateway-integration:
         credentials:
           Fn::GetAtt:
@@ -74,8 +71,6 @@ paths:
         responses:
           default:
             statusCode: 200
-            responseParameters:
-              method.response.header.Access-Control-Allow-Origin: '''*'''
             responseTemplates:
               application/json: $util.parseJson($input.json('$.output'))
         requestTemplates:
@@ -89,9 +84,6 @@ paths:
       responses:
         '200':
           description: default OK response
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
       x-amazon-apigateway-integration:
         credentials:
           Fn::GetAtt:
@@ -104,8 +96,6 @@ paths:
         responses:
           default:
             statusCode: 200
-            responseParameters:
-              method.response.header.Access-Control-Allow-Origin: '''*'''
             responseTemplates:
               application/json: $util.parseJson($input.json('$.output'))
         requestTemplates:
@@ -120,9 +110,6 @@ paths:
       responses:
         '200':
           description: OK response
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
       x-amazon-apigateway-integration:
         credentials:
           Fn::GetAtt:
@@ -135,8 +122,6 @@ paths:
         responses:
           default:
             statusCode: 200
-            responseParameters:
-              method.response.header.Access-Control-Allow-Origin: '''*'''
             responseTemplates:
               application/json: $util.parseJson($input.json('$.output'))
         requestTemplates:
