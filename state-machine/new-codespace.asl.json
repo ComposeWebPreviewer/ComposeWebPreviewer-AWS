@@ -1,6 +1,40 @@
 {
-	"StartAt": "Generate UUID",
+	"StartAt": "Is Authorization header present",
 	"States": {
+		"Is Authorization header present": {
+			"Type": "Choice",
+			"Choices": [
+				{
+					"Variable": "$.headers.Authroization",
+					"IsPresent": true,
+					"Next": "GetUser"
+				}
+			],
+			"Default": "Unauthorized"
+		},
+		"GetUser": {
+			"Type": "Task",
+			"Parameters": {
+				"AccessToken.$": "$.header.Authorization"
+			},
+			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:getUser",
+			"Next": "Generate UUID",
+			"Catch": [
+				{
+					"ErrorEquals": [
+						"States.ALL"
+					],
+					"Next": "Unauthorized"
+				}
+			]
+		},
+		"Unauthorized": {
+			"Type": "Pass",
+			"Parameters": {
+				"status": 401
+			},
+			"End": true
+		},
 		"Generate UUID": {
 			"Type": "Pass",
 			"Next": "Create new Codespace",
@@ -16,6 +50,9 @@
 				"Item": {
 					"id": {
 						"S.$": "$.uuid"
+					},
+					"sub": {
+						"S.$": "$.UserAttributes[?(@.Name == 'sub')][0].Value"
 					}
 				}
 			},
