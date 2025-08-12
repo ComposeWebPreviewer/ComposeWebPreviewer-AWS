@@ -56,13 +56,15 @@
 					}
 				}
 			},
-			"Next": "Success"
+			"Next": "Success",
+			"ResultPath": null
 		},
 		"Success": {
 			"Type": "Pass",
 			"End": true,
 			"Parameters": {
-				"status": 200
+				"status": 200,
+				"id.$": "$.uuid"
 			}
 		}
 	}
