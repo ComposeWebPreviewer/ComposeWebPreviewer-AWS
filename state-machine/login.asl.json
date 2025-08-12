@@ -7,19 +7,6 @@
 				{
 					"And": [
 						{
-							"Variable": "$.body.session",
-							"IsPresent": true
-						},
-						{
-							"Variable": "$.body.username",
-							"IsPresent": true
-						}
-					],
-					"Next": "Login with Signup Session id"
-				},
-				{
-					"And": [
-						{
 							"Variable": "$.body.username",
 							"IsPresent": true
 						},
@@ -45,35 +32,6 @@
 				"status": 400,
 				"error": "Not enough fields present"
 			}
-		},
-		"Login with Signup Session id": {
-			"Type": "Task",
-			"Parameters": {
-				"ClientId": "${UserPoolClientId}",
-				"AuthFlow": "USER_AUTH",
-				"AuthParameters": {
-					"USERNAME.$": "$.body.username"
-				},
-				"Session.$": "$.body.session"
-			},
-			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:initiateAuth",
-			"Next": "Successful",
-			"Catch": [
-				{
-					"ErrorEquals": [
-						"CognitoIdentityProvider.UserNotConfirmedException"
-					],
-					"Comment": "User not confirmed",
-					"Next": "User not confirmed"
-				},
-				{
-					"ErrorEquals": [
-						"CognitoIdentityProvider.UserNotFoundException"
-					],
-					"Comment": "User not found",
-					"Next": "User not found"
-				}
-			]
 		},
 		"User not found": {
 			"Type": "Pass",
