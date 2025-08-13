@@ -68,7 +68,7 @@
 			"Type": "Task",
 			"Parameters": {
 				"RequestItems": {
-					"Codespaces": {
+					"${CodespaceDBTableName}": {
 						"Keys": [
 							{
 								"sub": {
@@ -80,7 +80,29 @@
 				}
 			},
 			"Resource": "arn:aws:states:::aws-sdk:dynamodb:batchGetItem",
-			"Next": "Get codespaces result"
+			"Next": "Transform data"
+		},
+		"Transform data": {
+			"Type": "Map",
+			"ItemProcessor": {
+				"ProcessorConfig": {
+					"Mode": "INLINE"
+				},
+				"StartAt": "No op",
+				"States": {
+					"No op": {
+						"Type": "Pass",
+						"End": true
+					}
+				}
+			},
+			"Next": "Get codespaces result",
+			"ItemsPath": "$.Responses.${CodespaceDBTableName}",
+			"ItemSelector": {
+				"id.$": "$.id.S",
+				"code.$": "$.code.S",
+				"wasm.$": "$.wasm.S"
+			}
 		},
 		"Get codespaces result": {
 			"Type": "Pass",

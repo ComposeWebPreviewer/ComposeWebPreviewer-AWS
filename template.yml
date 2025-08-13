@@ -539,7 +539,7 @@ Resources:
     Properties:
       UserPoolId: !Ref UserPool
       ExplicitAuthFlows:
-        - ALLOW_USER_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
   UserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain

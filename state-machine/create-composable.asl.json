@@ -1,6 +1,41 @@
 {
-	"StartAt": "Are all feilds present?",
+	"StartAt": "Is Authorization header present",
 	"States": {
+		"Is Authorization header present": {
+			"Type": "Choice",
+			"Choices": [
+				{
+					"Variable": "$.headers.Authorization",
+					"IsPresent": true,
+					"Next": "GetUser"
+				}
+			],
+			"Default": "Unauthorized"
+		},
+		"Unauthorized": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 401
+			}
+		},
+		"GetUser": {
+			"Type": "Task",
+			"Parameters": {
+				"AccessToken": "MyData"
+			},
+			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:getUser",
+			"Next": "Are all feilds present?",
+			"Catch": [
+				{
+					"ErrorEquals": [
+						"States.ALL"
+					],
+					"Next": "Unauthorized"
+				}
+			],
+			"ResultPath": "$.user"
+		},
 		"Are all feilds present?": {
 			"Type": "Choice",
 			"Choices": [
@@ -24,8 +59,7 @@
 			"Type": "Pass",
 			"End": true,
 			"Parameters": {
-				"status": 400,
-				"error": "fields missing"
+				"status": 400
 			}
 		},
 		"Get codespace": {
@@ -39,7 +73,7 @@
 					}
 				}
 			},
-			"Next": "Run Composer",
+			"Next": "Does user has write access",
 			"Catch": [
 				{
 					"ErrorEquals": [
@@ -48,14 +82,24 @@
 					"Next": "Codespace not found"
 				}
 			],
-			"ResultPath": null
+			"ResultPath": "$.codespace"
+		},
+		"Does user has write access": {
+			"Type": "Choice",
+			"Choices": [
+				{
+					"Variable": "$.user.UserAttributes[?(@.Name == 'sub')][0].Value",
+					"TimestampEqualsPath": "$.codespace.sub",
+					"Next": "Run Composer"
+				}
+			],
+			"Default": "Unauthorized"
 		},
 		"Codespace not found": {
 			"Type": "Pass",
 			"End": true,
 			"Parameters": {
-				"status": 400,
-				"error": "codespace not found"
+				"status": 404
 			}
 		},
 		"Run Composer": {
