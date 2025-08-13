@@ -554,3 +554,16 @@ Metadata:
       Members:
         - LoginStateMachine
         - SignupStateMachine
+    Group2:
+      Label: UserPool
+      Members:
+        - UserPoolClient
+        - UserPoolDomain
+        - UserPool
+    Group3:
+      Label: Composer
+      Members:
+        - ComposerCluster
+        - ComposerLogGroup
+        - ComposerTaskExecutionRole
+        - ComposerTaskDefinition

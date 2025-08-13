@@ -1,28 +1,10 @@
 {
-	"StartAt": "Is Authorization header present",
+	"StartAt": "GetUser",
 	"States": {
-		"Is Authorization header present": {
-			"Type": "Choice",
-			"Choices": [
-				{
-					"Variable": "$.headers.Authorization",
-					"IsPresent": true,
-					"Next": "GetUser"
-				}
-			],
-			"Default": "Unauthorized"
-		},
-		"Unauthorized": {
-			"Type": "Pass",
-			"End": true,
-			"Parameters": {
-				"status": 401
-			}
-		},
 		"GetUser": {
 			"Type": "Task",
 			"Parameters": {
-				"AccessToken": "MyData"
+				"AccessToken.$": "States.StringSplit($.headers.Authorization, ' ')"
 			},
 			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:getUser",
 			"Next": "Are all feilds present?",
@@ -35,6 +17,13 @@
 				}
 			],
 			"ResultPath": "$.user"
+		},
+		"Unauthorized": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 401
+			}
 		},
 		"Are all feilds present?": {
 			"Type": "Choice",
@@ -73,7 +62,7 @@
 					}
 				}
 			},
-			"Next": "Does user has write access",
+			"Next": "Make object for comparision",
 			"Catch": [
 				{
 					"ErrorEquals": [
@@ -84,12 +73,21 @@
 			],
 			"ResultPath": "$.codespace"
 		},
-		"Does user has write access": {
+		"Make object for comparision": {
+			"Type": "Pass",
+			"Next": "Is author and user same",
+			"Parameters": {
+				"user_sub.$": "$.user.UserAttributes[?(@.Name == 'sub')][0].Value",
+				"author_sub.$": "$.codespace.sub"
+			},
+			"ResultPath": "$.comparision"
+		},
+		"Is author and user same": {
 			"Type": "Choice",
 			"Choices": [
 				{
-					"Variable": "$.user.UserAttributes[?(@.Name == 'sub')][0].Value",
-					"TimestampEqualsPath": "$.codespace.sub",
+					"Variable": "$.comparision.user_sub",
+					"StringEqualsPath": "$.comparision.author_sub",
 					"Next": "Run Composer"
 				}
 			],

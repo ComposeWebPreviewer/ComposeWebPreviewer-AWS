@@ -1,21 +1,10 @@
 {
-	"StartAt": "Is Authorization header present",
+	"StartAt": "GetUser",
 	"States": {
-		"Is Authorization header present": {
-			"Type": "Choice",
-			"Choices": [
-				{
-					"Variable": "$.headers.Authroization",
-					"IsPresent": true,
-					"Next": "GetUser"
-				}
-			],
-			"Default": "Unauthorized"
-		},
 		"GetUser": {
 			"Type": "Task",
 			"Parameters": {
-				"AccessToken.$": "$.header.Authorization"
+				"AccessToken.$": "States.StringSplit($.headers.Authorization, ' ')"
 			},
 			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:getUser",
 			"Next": "Generate UUID",
@@ -27,13 +16,6 @@
 					"Next": "Unauthorized"
 				}
 			]
-		},
-		"Unauthorized": {
-			"Type": "Pass",
-			"Parameters": {
-				"status": 401
-			},
-			"End": true
 		},
 		"Generate UUID": {
 			"Type": "Pass",
@@ -61,11 +43,18 @@
 		},
 		"Success": {
 			"Type": "Pass",
-			"End": true,
 			"Parameters": {
 				"status": 200,
 				"id.$": "$.uuid"
-			}
+			},
+			"End": true
+		},
+		"Unauthorized": {
+			"Type": "Pass",
+			"Parameters": {
+				"status": 401
+			},
+			"End": true
 		}
 	}
 }
