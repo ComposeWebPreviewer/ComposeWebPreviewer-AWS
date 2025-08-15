@@ -4,7 +4,7 @@
 		"GetUser": {
 			"Type": "Task",
 			"Parameters": {
-				"AccessToken.$": "States.StringSplit($.headers.Authorization, ' ')"
+				"AccessToken.$": "States.ArrayGetItem(States.StringSplit($.headers.Authorization, ' '), 1)"
 			},
 			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:getUser",
 			"Next": "Are all feilds present?",

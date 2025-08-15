@@ -5,8 +5,16 @@
 			"Type": "Choice",
 			"Choices": [
 				{
-					"Variable": "$.queryParams.id",
-					"IsPresent": true,
+					"And": [
+						{
+							"Variable": "$.queryParams.id",
+							"IsPresent": true
+						},
+						{
+							"Variable": "$.queryParams.uid",
+							"IsPresent": true
+						}
+					],
 					"Next": "DynamoDB GetItem"
 				},
 				{
@@ -23,8 +31,11 @@
 			"Parameters": {
 				"TableName": "${CodespaceDBTableName}",
 				"Key": {
+					"uid": {
+						"S.$": "$.queryParams.uid"
+					},
 					"id": {
-						"S.$": "$.queryParams.id"
+						"S.$": "$.queryPrams.id"
 					}
 				}
 			},
@@ -51,7 +62,7 @@
 		"GetUser": {
 			"Type": "Task",
 			"Parameters": {
-				"AccessToken": "MyData"
+				"AccessToken.$": "States.ArrayGetItem(States.StringSplit($.headers.Authorization, ' '), 1)"
 			},
 			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:getUser",
 			"Catch": [
@@ -62,25 +73,39 @@
 					"Next": "Unauthorized"
 				}
 			],
-			"Next": "BatchGetItem"
+			"Next": "Query"
 		},
-		"BatchGetItem": {
+		"Query": {
 			"Type": "Task",
 			"Parameters": {
-				"RequestItems": {
-					"${CodespaceDBTableName}": {
-						"Keys": [
-							{
-								"sub": {
-									"S.$": "$.UserAttributes[?(@.Name == 'sub')][0].Value"
-								}
-							}
-						]
+				"TableName": "${CodespaceDBTableName}",
+				"KeyConditionExpression": "uid = :usub",
+				"ExpressionAttributeValues": {
+					":usub": {
+						"S.$": "$.UserAttributes[2].Value"
 					}
 				}
 			},
-			"Resource": "arn:aws:states:::aws-sdk:dynamodb:batchGetItem",
-			"Next": "Transform data"
+			"Resource": "arn:aws:states:::aws-sdk:dynamodb:query",
+			"Next": "Are there codespaces"
+		},
+		"Are there codespaces": {
+			"Type": "Choice",
+			"Choices": [
+				{
+					"Variable": "$.Count",
+					"NumericGreaterThan": 0,
+					"Next": "Transform data"
+				}
+			],
+			"Default": "No codespaces"
+		},
+		"No codespaces": {
+			"Type": "Pass",
+			"Parameters": {
+				"status": 200
+			},
+			"End": true
 		},
 		"Transform data": {
 			"Type": "Map",
@@ -88,25 +113,30 @@
 				"ProcessorConfig": {
 					"Mode": "INLINE"
 				},
-				"StartAt": "No op",
+				"StartAt": "Format json",
 				"States": {
-					"No op": {
+					"Format json": {
 						"Type": "Pass",
-						"End": true
+						"End": true,
+						"Parameters": {
+							"id.$": "$.id.S",
+							"code.$": "$.code.S",
+							"wasm.$": "$.wasm.S"
+						}
 					}
 				}
 			},
 			"Next": "Get codespaces result",
-			"ItemsPath": "$.Responses.${CodespaceDBTableName}",
-			"ItemSelector": {
-				"id.$": "$.id.S",
-				"code.$": "$.code.S",
-				"wasm.$": "$.wasm.S"
-			}
+			"ItemsPath": "$.Items"
 		},
 		"Get codespaces result": {
 			"Type": "Pass",
-			"End": true
+			"End": true,
+			"Parameters": {
+				"status": 200,
+				"codespaces.$": "$",
+				"js": "${RunnerJs}"
+			}
 		}
 	}
 }
