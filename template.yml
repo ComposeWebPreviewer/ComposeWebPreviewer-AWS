@@ -539,7 +539,7 @@ Resources:
     Properties:
       UserPoolId: !Ref UserPool
       ExplicitAuthFlows:
-        - ALLOW_USER_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
   UserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain
@@ -554,3 +554,16 @@ Metadata:
       Members:
         - LoginStateMachine
         - SignupStateMachine
+    Group2:
+      Label: UserPool
+      Members:
+        - UserPoolClient
+        - UserPoolDomain
+        - UserPool
+    Group3:
+      Label: Composer
+      Members:
+        - ComposerCluster
+        - ComposerLogGroup
+        - ComposerTaskExecutionRole
+        - ComposerTaskDefinition

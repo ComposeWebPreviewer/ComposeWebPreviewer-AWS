@@ -1,6 +1,22 @@
 {
-	"StartAt": "Generate UUID",
+	"StartAt": "GetUser",
 	"States": {
+		"GetUser": {
+			"Type": "Task",
+			"Parameters": {
+				"AccessToken.$": "States.StringSplit($.headers.Authorization, ' ')"
+			},
+			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:getUser",
+			"Next": "Generate UUID",
+			"Catch": [
+				{
+					"ErrorEquals": [
+						"States.ALL"
+					],
+					"Next": "Unauthorized"
+				}
+			]
+		},
 		"Generate UUID": {
 			"Type": "Pass",
 			"Next": "Create new Codespace",
@@ -16,17 +32,29 @@
 				"Item": {
 					"id": {
 						"S.$": "$.uuid"
+					},
+					"sub": {
+						"S.$": "$.UserAttributes[?(@.Name == 'sub')][0].Value"
 					}
 				}
 			},
-			"Next": "Success"
+			"Next": "Success",
+			"ResultPath": null
 		},
 		"Success": {
 			"Type": "Pass",
-			"End": true,
 			"Parameters": {
-				"status": 200
-			}
+				"status": 200,
+				"id.$": "$.uuid"
+			},
+			"End": true
+		},
+		"Unauthorized": {
+			"Type": "Pass",
+			"Parameters": {
+				"status": 401
+			},
+			"End": true
 		}
 	}
 }

@@ -8,9 +8,14 @@
 					"Variable": "$.queryParams.id",
 					"IsPresent": true,
 					"Next": "DynamoDB GetItem"
+				},
+				{
+					"Variable": "$.headers.Authorization",
+					"IsPresent": true,
+					"Next": "GetUser"
 				}
 			],
-			"Default": "Id not present"
+			"Default": "Unauthorized"
 		},
 		"DynamoDB GetItem": {
 			"Type": "Task",
@@ -23,9 +28,9 @@
 					}
 				}
 			},
-			"Next": "Success"
+			"Next": "Get codespace result"
 		},
-		"Success": {
+		"Get codespace result": {
 			"Type": "Pass",
 			"End": true,
 			"Parameters": {
@@ -36,13 +41,72 @@
 				"js": "${RunnerJs}"
 			}
 		},
-		"Id not present": {
+		"Unauthorized": {
 			"Type": "Pass",
 			"End": true,
 			"Parameters": {
-				"status": 400,
-				"error": "id not present"
+				"status": 401
 			}
+		},
+		"GetUser": {
+			"Type": "Task",
+			"Parameters": {
+				"AccessToken": "MyData"
+			},
+			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:getUser",
+			"Catch": [
+				{
+					"ErrorEquals": [
+						"States.ALL"
+					],
+					"Next": "Unauthorized"
+				}
+			],
+			"Next": "BatchGetItem"
+		},
+		"BatchGetItem": {
+			"Type": "Task",
+			"Parameters": {
+				"RequestItems": {
+					"${CodespaceDBTableName}": {
+						"Keys": [
+							{
+								"sub": {
+									"S.$": "$.UserAttributes[?(@.Name == 'sub')][0].Value"
+								}
+							}
+						]
+					}
+				}
+			},
+			"Resource": "arn:aws:states:::aws-sdk:dynamodb:batchGetItem",
+			"Next": "Transform data"
+		},
+		"Transform data": {
+			"Type": "Map",
+			"ItemProcessor": {
+				"ProcessorConfig": {
+					"Mode": "INLINE"
+				},
+				"StartAt": "No op",
+				"States": {
+					"No op": {
+						"Type": "Pass",
+						"End": true
+					}
+				}
+			},
+			"Next": "Get codespaces result",
+			"ItemsPath": "$.Responses.${CodespaceDBTableName}",
+			"ItemSelector": {
+				"id.$": "$.id.S",
+				"code.$": "$.code.S",
+				"wasm.$": "$.wasm.S"
+			}
+		},
+		"Get codespaces result": {
+			"Type": "Pass",
+			"End": true
 		}
 	}
 }

@@ -1,6 +1,30 @@
 {
-	"StartAt": "Are all feilds present?",
+	"StartAt": "GetUser",
 	"States": {
+		"GetUser": {
+			"Type": "Task",
+			"Parameters": {
+				"AccessToken.$": "States.StringSplit($.headers.Authorization, ' ')"
+			},
+			"Resource": "arn:aws:states:::aws-sdk:cognitoidentityprovider:getUser",
+			"Next": "Are all feilds present?",
+			"Catch": [
+				{
+					"ErrorEquals": [
+						"States.ALL"
+					],
+					"Next": "Unauthorized"
+				}
+			],
+			"ResultPath": "$.user"
+		},
+		"Unauthorized": {
+			"Type": "Pass",
+			"End": true,
+			"Parameters": {
+				"status": 401
+			}
+		},
 		"Are all feilds present?": {
 			"Type": "Choice",
 			"Choices": [
@@ -24,8 +48,7 @@
 			"Type": "Pass",
 			"End": true,
 			"Parameters": {
-				"status": 400,
-				"error": "fields missing"
+				"status": 400
 			}
 		},
 		"Get codespace": {
@@ -39,7 +62,7 @@
 					}
 				}
 			},
-			"Next": "Run Composer",
+			"Next": "Make object for comparision",
 			"Catch": [
 				{
 					"ErrorEquals": [
@@ -48,14 +71,33 @@
 					"Next": "Codespace not found"
 				}
 			],
-			"ResultPath": null
+			"ResultPath": "$.codespace"
+		},
+		"Make object for comparision": {
+			"Type": "Pass",
+			"Next": "Is author and user same",
+			"Parameters": {
+				"user_sub.$": "$.user.UserAttributes[?(@.Name == 'sub')][0].Value",
+				"author_sub.$": "$.codespace.sub"
+			},
+			"ResultPath": "$.comparision"
+		},
+		"Is author and user same": {
+			"Type": "Choice",
+			"Choices": [
+				{
+					"Variable": "$.comparision.user_sub",
+					"StringEqualsPath": "$.comparision.author_sub",
+					"Next": "Run Composer"
+				}
+			],
+			"Default": "Unauthorized"
 		},
 		"Codespace not found": {
 			"Type": "Pass",
 			"End": true,
 			"Parameters": {
-				"status": 400,
-				"error": "codespace not found"
+				"status": 404
 			}
 		},
 		"Run Composer": {
